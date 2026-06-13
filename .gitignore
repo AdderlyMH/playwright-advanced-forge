@@ -7,14 +7,19 @@ dist/
 
 # Environment variables
 .env
-.env.*
+.env.local
+.env.*.local
+!.env.example
 
 # Playwright
 /test-results/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
-/playwright/.auth/
+/.auth/
+
+# Visual regression snapshots (uncomment if not tracking baselines)
+# tests/snapshots/
 
 # Allure
 allure-results/

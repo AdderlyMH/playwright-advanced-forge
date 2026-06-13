@@ -29,20 +29,24 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 3 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? parseInt(process.env.WORKERS || '100%') : 1,
+  workers: process.env.CI
+    ? process.env.WORKERS
+      ? parseInt(process.env.WORKERS, 10)
+      : undefined
+    : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
-      ['html', { outputFolder: 'playwright-report', open: 'never' }],
-      ['allure-playwright', { outputFolder: 'allure-results' }],
-      /* For CI integrations */
-      ['junit', { outputFile: 'test-results/junit.xml' }],
-      /* For analytics */
-      ['json', { outputFile: 'test-results/results.json' }],
+    ['html', { outputFolder: 'playwright-report', open: 'never' }],
+    ['allure-playwright', { outputFolder: 'allure-results' }],
+    /* For CI integrations */
+    ['junit', { outputFile: 'test-results/junit.xml' }],
+    /* For analytics */
+    ['json', { outputFile: 'test-results/results.json' }],
   ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('')`. */
-    baseURL: process.env.BASE_URL || 'https://api.github.com',
+    baseURL: process.env.BASE_URL || 'https://dummyjson.com',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'retain-on-failure',
@@ -107,11 +111,12 @@ export default defineConfig({
   ],
 
   /* Run your local dev server before starting the tests */
-  webServer: process.env.RUN_SERVER ? {
-    command: 'npm run start',
-    url: `http://localhost:${process.env.PORT || 3000}`,
-    reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
-  } : undefined,
-
+  webServer: process.env.RUN_SERVER
+    ? {
+        command: 'npm run start',
+        url: `http://localhost:${process.env.PORT || 3000}`,
+        reuseExistingServer: !process.env.CI,
+        timeout: 120 * 1000,
+      }
+    : undefined,
 });
