@@ -12,6 +12,8 @@ dotenv.config({ path: path.resolve(__dirname, '.env'), quiet: true });
  * See https://playwright.dev/docs/test-configuration.
  */
 // const testEnv = process.env.TEST_ENV || 'staging';
+/* Define the absolute path where the authenticated browser state will be cached. */
+export const STORAGE_STATE = path.join(__dirname, '.auth/user.json');
 
 export default defineConfig({
   outputDir: 'test-results',
@@ -49,10 +51,6 @@ export default defineConfig({
     ignoreHTTPSErrors: true,
   },
 
-  /* Global setup and teardown hooks */
-  globalSetup: require.resolve('./tests/global-setup.ts'),
-  globalTeardown: require.resolve('./tests/global-teardown.ts'),
-
   /* Snapshots for visual regression testing */
   snapshotDir: 'tests/snapshots',
   snapshotPathTemplate: '{dir}/{testFileDir}/{testFileName}-{platform}{ext}',
@@ -60,25 +58,37 @@ export default defineConfig({
 
   /* Configure projects for major browsers */
   projects: [
+    // 1. Setup Project: Dedicated block to handle authentication seeding sequentially
+    {
+      name: 'setup',
+      testMatch: /.*\.setup.ts/,
+    },
+    // 2. Main Execution Projects: Inherit cached authentication states implicitly
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: { ...devices['Desktop Chrome'], storageState: STORAGE_STATE },
+      dependencies: ['setup'],
     },
 
     {
       name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
+      // Automatically injects cookies/tokens into all workers
+      use: { ...devices['Desktop Firefox'], storageState: STORAGE_STATE },
+      dependencies: ['setup'],
     },
 
     {
       name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
+      use: { ...devices['Desktop Safari'], storageState: STORAGE_STATE },
+      // Forces setup project execution prior to launch
+      dependencies: ['setup'],
     },
 
     /* Test against mobile viewports. */
     {
       name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] }
+      use: { ...devices['Pixel 5'], storageState: STORAGE_STATE },
+      dependencies: ['setup'],
     },
     // {
     //   name: 'Mobile Safari',

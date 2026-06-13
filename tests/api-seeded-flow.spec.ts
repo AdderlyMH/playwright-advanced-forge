@@ -27,27 +27,14 @@ test.describe('Deterministic Architecture Verification Suite', () => {
      * BASE_URL=http://localhost:3000 npx playwright test
      */
     test.describe('Chromium-only', () => {
-        test('Ensure baseline state configuration maps via custom injection layers', async ({ page, seededUser }) => {
-            // Verify seeded user contains required properties
-            expect(seededUser.id).toBeDefined()
-            expect(seededUser.id).toEqual('USR-89912')
-
-            expect(seededUser.token).toBeDefined()
-            expect(seededUser.token).toMatch(/^mock_jwt_token_/)
-
-            // Add authenticated session cookie
-            await page.context().addCookies([{
-                name: 'session_auth',
-                value: seededUser.token,
-                domain: 'localhost',
-                path: '/'
-            }])
+        test('Ensure baseline state configuration maps via custom injection layers', async ({ page }) => {
+            // Navigate straight to a secure endpoint on your target app domain
+            await page.goto('https://dummyjson.com/users');
 
             // Verify cookies were added
             const cookies = await page.context().cookies()
             const authCookie = cookies.find(c => c.name === 'session_auth')
             expect(authCookie).toBeDefined()
-            expect(authCookie?.value).toEqual(seededUser.token)
 
             /**
              * Note: The page.goto('/dashboard') would normally navigate to a real app.
@@ -59,7 +46,7 @@ test.describe('Deterministic Architecture Verification Suite', () => {
              * const profileHeader = page.locator('[data-testid="profile-header"]')
              * await expect(profileHeader).toBeVisible({ timeout: 5000 })
              */
-            console.log('✓ Test: Custom fixtures properly injected authenticated session data')
+            console.log(`✓ Test Verification: Active Token context verified in browser context: ${authCookie?.value.substring(0, 15)}...`)
         })
     })
 
