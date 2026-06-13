@@ -1,0 +1,144 @@
+{
+  "compilerOptions": {
+    /**
+     * ============================================
+     * LANGUAGE & ENVIRONMENT
+     * ============================================
+     * Targets modern Node.js with ES2020+ features
+     */
+    "target": "ES2020",
+    "module": "ESNext",
+    "lib": ["ES2020", "DOM"],
+    "strict": true,
+
+    /**
+     * ============================================
+     * STRICT TYPE-CHECKING OPTIONS
+     * ============================================
+     * Maximum type safety for enterprise code
+     */
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+
+    /**
+     * ============================================
+     * MODULE RESOLUTION
+     * ============================================
+     */
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+
+    /**
+     * ============================================
+     * PATH ALIASES - Cleaner imports
+     * ============================================
+     * Usage: import { ApiClient } from '@utils/ApiClient'
+     */
+    "baseUrl": ".",
+    "paths": {
+      "@utils/*": ["src/utils/*"],
+      "@fixtures/*": ["src/fixtures/*"],
+      "@tests/*": ["tests/*"],
+      "@/*": ["src/*"]
+    },
+
+    /**
+     * ============================================
+     * OUTPUT & COMPILATION
+     * ============================================
+     */
+    "outDir": "./dist",
+    "rootDir": "./",
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+    "removeComments": false,
+
+    /**
+     * ============================================
+     * INTEROPERABILITY & COMPATIBILITY
+     * ============================================
+     */
+    "allowJs": true,
+    "checkJs": false,
+    "resolveJsonModule": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "allowUmdGlobalAccess": true,
+
+    /**
+     * ============================================
+     * DIAGNOSTIC & ERROR REPORTING
+     * ============================================
+     */
+    "pretty": true,
+    "diagnostics": false,
+    "suppressExcessPropertyErrors": false,
+    "suppressImplicitAnyIndexErrors": false,
+
+    /**
+     * ============================================
+     * INCREMENTAL & BUILD OPTIMIZATION
+     * ============================================
+     * For faster rebuilds and better caching
+     */
+    "incremental": true,
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+
+  /**
+   * ============================================
+   * FILE INCLUSION & EXCLUSION
+   * ============================================
+   */
+  "include": [
+    "src/**/*",
+    "tests/**/*",
+    "playwright.config.ts"
+  ],
+
+  "exclude": [
+    "node_modules",
+    "dist",
+    "coverage",
+    "*.d.ts",
+    "**/*.spec.ts.snap"
+  ],
+
+  /**
+   * ============================================
+   * WATCH MODE OPTIONS
+   * ============================================
+   */
+  "watchOptions": {
+    "watchFile": "useFsEventsOnParentDirectory",
+    "watchDirectory": "dynamicprioritypolling",
+    "fallbackPolling": "dynamicpriority",
+    "excludeDirectories": ["**/node_modules", "**/.git", "**/dist", "**/coverage"]
+  },
+
+  /**
+   * ============================================
+   * ts-node Configuration
+   * ============================================
+   * Optional: For running TypeScript directly
+   */
+  "ts-node": {
+    "transpileOnly": true,
+    "compilerOptions": {
+      "module": "commonjs"
+    }
+  }
+}
