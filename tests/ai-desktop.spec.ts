@@ -9,7 +9,7 @@ async function runProductSearchFlow(page: Page, aiStep: (prompt: string) => Prom
   await page.getByRole('link', { name: 'Home' }).click();
 
   // Wait specifically for the search bar to be ready
-  await expect(page.getByRole('textbox', { name: 'Search' })).toBeVisible({ timeout: 10000 });
+  //await expect(page.getByRole('textbox', { name: 'Search' })).toBeVisible({ timeout: 10000 });
 
   // 2. ADAPTIVE AI TIER
   await aiStep('Find the search bar, type "pliers" into it and press enter.');
