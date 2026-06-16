@@ -1,0 +1,253 @@
+name: E2E — Two-Stage Sharded Pipeline
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Triggers
+# ──────────────────────────────────────────────────────────────────────────────
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+# Cancel superseded runs on the same ref to save cloud minutes.
+concurrency:
+  group: e2e-${{ github.ref_name }}
+  cancel-in-progress: true
+
+# Least-privilege default token.
+permissions:
+  contents: read
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Shared environment (non-secret). Secrets are injected per-job from GitHub.
+# ──────────────────────────────────────────────────────────────────────────────
+env:
+  # Pin to a known-good Playwright image tag matching @playwright/test (^1.60).
+  PLAYWRIGHT_VERSION: '1.60.0'
+  # Total number of parallel shards for the functional tier.
+  SHARD_TOTAL: 4
+  BASE_URL: ${{ vars.BASE_URL || 'https://practicesoftwaretesting.com' }}
+  API_BASE_URL: ${{ vars.API_BASE_URL || 'https://api.practicesoftwaretesting.com' }}
+
+jobs:
+  # ════════════════════════════════════════════════════════════════════════════
+  # STAGE 0 — INSTALL + CACHE  (binary caching for node_modules + browsers)
+  # ════════════════════════════════════════════════════════════════════════════
+  install:
+    name: Install & Cache Binaries
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (with npm cache)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # Cache node_modules keyed on the lockfile hash.
+      - name: Cache node_modules
+        id: cache-node
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install dependencies
+        if: steps.cache-node.outputs.cache-hit != 'true'
+        run: npm ci
+
+      # Cache Playwright browser binaries keyed on the resolved Playwright version.
+      - name: Cache Playwright browsers
+        id: cache-browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ env.PLAYWRIGHT_VERSION }}
+
+      - name: Install Playwright browsers + OS deps
+        if: steps.cache-browsers.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps
+
+      # If browsers were cached but the runner is fresh, still install OS-level deps.
+      - name: Install OS dependencies only (cache hit path)
+        if: steps.cache-browsers.outputs.cache-hit == 'true'
+        run: npx playwright install-deps
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STAGE 1 — ISOLATED ORCHESTRATION  (auth runs exactly ONCE)
+  # ════════════════════════════════════════════════════════════════════════════
+  auth-setup:
+    name: Authenticate Session (once)
+    needs: install
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CI: 'true'
+      APP_USER: ${{ secrets.APP_USER }}
+      APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Restore node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Restore Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ env.PLAYWRIGHT_VERSION }}
+
+      - name: Install OS dependencies
+        run: npx playwright install-deps
+
+      # Run ONLY the setup project — generates .auth/user.json via API login.
+      - name: Generate authenticated storage state
+        run: npx playwright test --project=setup
+
+      # Publish user.json so every shard can reuse the same session.
+      - name: Upload auth artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: auth-state
+          path: .auth/user.json
+          retention-days: 1
+          if-no-files-found: error
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STAGE 2 — FUNCTIONAL TIER  (native worker sharding across the matrix)
+  # ════════════════════════════════════════════════════════════════════════════
+  test-execution:
+    name: Tests (shard ${{ matrix.shard }}/${{ matrix.total }})
+    needs: auth-setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+        total: [4]
+    env:
+      CI: 'true'
+      # ZeroStep AI token — required for the ai() calls in ai-*.spec.ts.
+      ZEROSTEP_TOKEN: ${{ secrets.ZEROSTEP_TOKEN }}
+      # Keep auth creds available in case any spec re-authenticates lazily.
+      APP_USER: ${{ secrets.APP_USER }}
+      APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Restore node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Restore Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ env.PLAYWRIGHT_VERSION }}
+
+      - name: Install OS dependencies
+        run: npx playwright install-deps
+
+      # Pull the single authenticated state down into every shard.
+      - name: Download auth artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: auth-state
+          path: .auth
+
+      # Run all browser projects EXCEPT setup (auth already done) and shard them.
+      # --shard balances test files natively across the 4 runners.
+      - name: Run Playwright tests (sharded)
+        run: |
+          npx playwright test \
+            --project=chromium \
+            --project=firefox \
+            --project=webkit \
+            --project="Mobile Chrome" \
+            --project=chromium-ai-desktop \
+            --project=chromium-ai-mobile \
+            --shard=${{ matrix.shard }}/${{ matrix.total }}
+
+      # Each shard uploads its raw blob report + allure results for later merge.
+      - name: Upload blob report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: blob-report-${{ matrix.shard }}
+          path: blob-report
+          retention-days: 3
+
+      - name: Upload Allure results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-${{ matrix.shard }}
+          path: allure-results
+          retention-days: 3
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STAGE 3 — REPORT MERGE  (stitch sharded blob reports into one HTML report)
+  # ════════════════════════════════════════════════════════════════════════════
+  merge-reports:
+    name: Merge Reports
+    needs: test-execution
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Restore node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      # Collect every shard's blob report into one folder.
+      - name: Download all blob reports
+        uses: actions/download-artifact@v4
+        with:
+          path: all-blob-reports
+          pattern: blob-report-*
+          merge-multiple: true
+
+      - name: Merge into single HTML report
+        run: npx playwright merge-reports --reporter=html ./all-blob-reports
+
+      - name: Upload merged HTML report
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 14

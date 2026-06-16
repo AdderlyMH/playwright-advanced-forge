@@ -52,7 +52,7 @@ test.describe('Deterministic Architecture Verification Suite', () => {
 
       /**
        * Note: The page.goto('/dashboard') would normally navigate to a real app.
-       * Since we're testing against GitHub API (api.github.com), we skip the
+       * Since we're testing against GitHub API (api..github.com), we skip the
        * actual navigation to avoid unnecessary errors.
        *
        * In a real scenario with a proper backend:

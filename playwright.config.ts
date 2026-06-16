@@ -43,14 +43,18 @@ export default defineConfig({
       : undefined
     : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: [
-    ['html', { outputFolder: 'playwright-report', open: 'never' }],
-    ['allure-playwright', { outputFolder: 'allure-results' }],
-    /* For CI integrations */
-    ['junit', { outputFile: 'test-results/junit.xml' }],
-    /* For analytics */
-    ['json', { outputFile: 'test-results/results.json' }],
-  ],
+  reporter: process.env.CI
+    ? [
+        ['blob'], // ← sharded merge source
+        ['allure-playwright', { outputFolder: 'allure-results' }],
+        ['junit', { outputFile: 'test-results/junit.xml' }],
+      ]
+    : [
+        ['html', { outputFolder: 'playwright-report', open: 'never' }],
+        ['allure-playwright', { outputFolder: 'allure-results' }],
+        ['junit', { outputFile: 'test-results/junit.xml' }],
+        ['json', { outputFile: 'test-results/results.json' }],
+      ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('')`. */
