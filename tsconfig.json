@@ -11,7 +11,7 @@
     "lib": ["ES2020", "DOM"],
     "strict": true,
     /* Silence TS 7.0 deprecation notices for baseUrl / moduleResolution=node */
-    "ignoreDeprecations": "6.0",
+    "ignoreDeprecations": "5.6",
 
     /**
      * ============================================

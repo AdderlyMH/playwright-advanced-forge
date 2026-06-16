@@ -8,12 +8,20 @@ import dotenv from 'dotenv';
 import path from 'path';
 dotenv.config({ path: path.resolve(__dirname, '.env'), quiet: true });
 
+import { BASE_URL, API_BASE_URL } from '@/config/env';
+
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
 // const testEnv = process.env.TEST_ENV || 'staging';
 /* Define the absolute path where the authenticated browser state will be cached. */
 export const STORAGE_STATE = path.join(__dirname, '.auth/user.json');
+
+/* Re-export the resolved API base URL so tests/utilities can import it from `@config`. */
+export { API_BASE_URL };
+
+/* Pattern that matches any spec file whose name starts with "ai" */
+const AI_SPECS = /.*\/ai[^/]*\.spec\.ts/;
 
 export default defineConfig({
   outputDir: 'test-results',
@@ -46,7 +54,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('')`. */
-    baseURL: process.env.BASE_URL || 'https://dummyjson.com',
+    baseURL: BASE_URL,
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'retain-on-failure',
@@ -66,16 +74,37 @@ export default defineConfig({
     {
       name: 'setup',
       testMatch: /.*\.setup.ts/,
+      use: {
+        baseURL: BASE_URL,
+      },
     },
-    // 2. Main Execution Projects: Inherit cached authentication states implicitly
+
+    // 2. AI-only Projects (Chromium — desktop + mobile)
+    {
+      name: 'chromium-ai-desktop',
+      testMatch: /.*\/ai-desktop\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'], storageState: STORAGE_STATE },
+      dependencies: ['setup'],
+    },
+
+    {
+      name: 'chromium-ai-mobile',
+      testMatch: /.*\/ai-mobile\.spec\.ts/,
+      use: { ...devices['Pixel 5'], storageState: STORAGE_STATE },
+      dependencies: ['setup'],
+    },
+
+    // 3. Main Execution Projects: Inherit cached authentication states implicitly (exclude AI specs)
     {
       name: 'chromium',
+      testIgnore: AI_SPECS,
       use: { ...devices['Desktop Chrome'], storageState: STORAGE_STATE },
       dependencies: ['setup'],
     },
 
     {
       name: 'firefox',
+      testIgnore: AI_SPECS,
       // Automatically injects cookies/tokens into all workers
       use: { ...devices['Desktop Firefox'], storageState: STORAGE_STATE },
       dependencies: ['setup'],
@@ -83,6 +112,7 @@ export default defineConfig({
 
     {
       name: 'webkit',
+      testIgnore: AI_SPECS,
       use: { ...devices['Desktop Safari'], storageState: STORAGE_STATE },
       // Forces setup project execution prior to launch
       dependencies: ['setup'],
@@ -91,6 +121,7 @@ export default defineConfig({
     /* Test against mobile viewports. */
     {
       name: 'Mobile Chrome',
+      testIgnore: AI_SPECS,
       use: { ...devices['Pixel 5'], storageState: STORAGE_STATE },
       dependencies: ['setup'],
     },
