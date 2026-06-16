@@ -2,11 +2,13 @@ import { test as base, expect } from '@playwright/test';
 import { ApiClient } from '@utils/ApiClient';
 import { ai } from '@zerostep/playwright';
 import { User } from '@/types';
+import { DataFactory } from '@/src/factories/DataFactory';
 
 export type CustomFixtures = {
   apiClient: ApiClient;
   aiStep: (prompt: string) => Promise<any>;
   seededUser: User;
+  dataFactory: typeof DataFactory;
 };
 
 export const test = base.extend<CustomFixtures>({
@@ -32,6 +34,11 @@ export const test = base.extend<CustomFixtures>({
     };
 
     await use(aiExecutor);
+  },
+
+  // Expose the data factory engine universally across all execution threads
+  dataFactory: async ({}, use) => {
+    await use(DataFactory);
   },
 
   // Provide deterministic metadata about the user identity currently cached in storageState
