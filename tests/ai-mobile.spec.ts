@@ -17,12 +17,10 @@ test.describe('Hybrid E2E Suite: Mobile', () => {
     // Structural Metadata for Stakeholder Dashboards
     test.info().annotations.push({ type: 'epic', description: 'Catalog Management' });
     test.info().annotations.push({ type: 'feature', description: 'Product Search Experience' });
-    test
-      .info()
-      .annotations.push({
-        type: 'story',
-        description: 'AI-Assisted Resilient Search Verification',
-      });
+    test.info().annotations.push({
+      type: 'story',
+      description: 'AI-Assisted Resilient Search Verification',
+    });
 
     // Mobile-specific AI prompt — hamburger menus, bottom navbars, etc.
     await page.goto('/contact');
@@ -33,6 +31,9 @@ test.describe('Hybrid E2E Suite: Mobile', () => {
 
     // Mobile navigation may differ — AI handles it adaptively
     await aiStep('Open the navigation menu and tap the Home link.');
+
+    // Wait specifically for the filter button to be ready
+    await expect(page.getByRole('button', { name: 'Filters' })).toBeVisible({ timeout: 10000 });
     await page.getByRole('button', { name: 'Filters' }).click();
 
     // Reuse shared extraction + assertion logic

@@ -16,7 +16,7 @@ dist/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
-/.auth/
+.auth/
 
 # Visual regression snapshots (uncomment if not tracking baselines)
 # tests/snapshots/

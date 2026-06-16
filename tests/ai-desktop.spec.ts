@@ -8,6 +8,9 @@ async function runProductSearchFlow(page: Page, aiStep: (prompt: string) => Prom
   await expect(page.getByRole('heading', { name: 'Contact' })).toBeVisible();
   await page.getByRole('link', { name: 'Home' }).click();
 
+  // Wait specifically for the search bar to be ready
+  await expect(page.getByRole('textbox', { name: 'Search' })).toBeVisible({ timeout: 10000 });
+
   // 2. ADAPTIVE AI TIER
   await aiStep('Find the search bar, type "pliers" into it and press enter.');
 
@@ -16,13 +19,6 @@ async function runProductSearchFlow(page: Page, aiStep: (prompt: string) => Prom
     'Get the name of the first product in the search results list',
   );
   const topResultPrice = await aiStep('Get the numerical price of the first product as a string');
-  // 3. AI DATA EXTRACTION
-  // const topResultTitle = await aiStep(
-  //     'Return the text of the first product heading in the search results grid'
-  // );
-  // const topResultPrice = await aiStep(
-  //     'Return the price text of the first product card in the search results grid, for example "$14.15"'
-  // );
   const priceNumeric = parseFloat(topResultPrice.replace(/[^\d.]/g, ''));
 
   console.log(`📦 Extracted Product: ${topResultTitle} at $${priceNumeric}`);
